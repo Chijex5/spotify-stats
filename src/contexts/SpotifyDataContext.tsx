@@ -24,10 +24,12 @@ interface Playlist {
   externalUrl: string;         // Added for playlist external link
 }
 
+// Updated interface to include the new factors field
 interface SongOfTheDay {
   track: Track;
   playCount: number;
   timeWindow: string;
+  factors: string[];
 }
 
 interface SpotifyDataContextType {
@@ -158,41 +160,107 @@ export const SpotifyDataProvider: React.FC<{
   const calculateSongOfTheDay = (tracks: Track[]): SongOfTheDay | null => {
     if (!tracks || tracks.length === 0) return null;
   
-    const twentyFourHoursAgo = new Date().getTime() - 24 * 60 * 60 * 1000;
+    // Get the current date and check if we need to generate a new Song of the Day
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Check local storage for the last generated song and its date
+    const storedSotd = localStorage.getItem('songOfTheDay');
+    let storedDate = localStorage.getItem('songOfTheDayDate');
+    const storedDateObj = storedDate ? new Date(storedDate) : null;
+    
+    // If we have a stored song and it's still from today, return it
+    if (storedSotd && storedDateObj && storedDateObj.getTime() === today.getTime()) {
+      try {
+        return JSON.parse(storedSotd);
+      } catch (e) {
+        console.error("Failed to parse stored Song of the Day", e);
+        // Continue to generate a new one
+      }
+    }
+    
     const timeWindow = "24 hrs";
-  
+    
+    const thirtyDaysAgo = new Date().getTime() - 30 * 24 * 60 * 60 * 1000;
     const recentTracks = tracks.filter(track => {
       if (!track.played_at) return false;
       try {
         const playedAtTime = new Date(track.played_at).getTime();
-        return !isNaN(playedAtTime) && playedAtTime > twentyFourHoursAgo;
+        return !isNaN(playedAtTime) && playedAtTime > thirtyDaysAgo;
       } catch (e) {
         return false;
       }
     });
-  
+    
     if (recentTracks.length === 0) return null;
-  
-    const trackCounts: { [key: string]: { track: Track; count: number } } = {};
+    
+    const trackScores: { [key: string]: { track: Track; score: number; factors: string[] } } = {};
+    
     recentTracks.forEach(track => {
-      trackCounts[track.id] = trackCounts[track.id] 
-        ? { track, count: trackCounts[track.id].count + 1 } 
-        : { track, count: 1 };
+      if (!trackScores[track.id]) {
+        trackScores[track.id] = { 
+          track, 
+          score: 0,
+          factors: []
+        };
+      }
+      
+      // Factor 1: Play count (base weight)
+      trackScores[track.id].score += 1;
+      
+      // Factor 2: Recency bonus (songs played more recently get higher scores)
+      if (track.played_at) {
+        const daysAgo = (new Date().getTime() - new Date(track.played_at).getTime()) / (1000 * 60 * 60 * 24);
+        const recencyBonus = Math.max(0, 5 - daysAgo); // Up to 5 points for very recent plays
+        trackScores[track.id].score += recencyBonus;
+        if (recencyBonus > 2) trackScores[track.id].factors.push('recently played');
+      }
+      
+      // Factor 3: Popularity sweet spot (not too mainstream, not too obscure)
+      if (track.popularity) {
+        // Songs with popularity between 40-70 get bonus points (personally relevant but quality)
+        const popularityBonus = track.popularity >= 40 && track.popularity <= 70 ? 3 : 0;
+        trackScores[track.id].score += popularityBonus;
+        if (popularityBonus > 0) trackScores[track.id].factors.push('uniquely you');
+      }
+      
+      // Factor 4: Preview availability bonus - prefer tracks we can preview
+      if (track.previewUrl) {
+        trackScores[track.id].score += 2;
+        trackScores[track.id].factors.push('preview available');
+      }
     });
-  
-    const mostPlayed = Object.values(trackCounts).reduce((max, current) => 
-      current.count > max.count ? current : max, 
-      { count: 0, track: {} as Track }
-    );
-  
-    return mostPlayed.count > 0 ? { 
-      track: mostPlayed.track,
-      playCount: mostPlayed.count,
-      timeWindow
-    } : null;
+    
+    // Use the current date as a seed for pseudo-randomness
+    // This ensures the same song is selected all day, but changes at midnight
+    const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    
+    // Get top 5 tracks by score
+    const topTracks = Object.values(trackScores)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+    
+    if (topTracks.length === 0) return null;
+    
+    // Use the dateSeed to select one of the top tracks
+    const selectedIndex = dateSeed % topTracks.length;
+    const selectedTrack = topTracks[selectedIndex];
+    
+    // Create the Song of the Day object
+    const songOfTheDay: SongOfTheDay = {
+      track: selectedTrack.track,
+      playCount: recentTracks.filter(t => t.id === selectedTrack.track.id).length,
+      timeWindow,
+      factors: selectedTrack.factors
+    };
+    
+    localStorage.setItem('songOfTheDay', JSON.stringify(songOfTheDay));
+    localStorage.setItem('songOfTheDayDate', today.toISOString());
+    
+    return songOfTheDay;
   };
 
-  // Enhanced playlists fetching
+
   const fetchPlaylists = async () => {
 if (!token) {
   setError('No authentication token available');
