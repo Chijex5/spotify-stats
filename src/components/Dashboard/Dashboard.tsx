@@ -562,12 +562,15 @@ const Dashboard: React.FC = () => {
             <div className="bg-white bg-opacity-70 rounded-xl overflow-hidden backdrop-blur-sm shadow-lg border border-gray-100">
               {recentlyPlayed.slice(0, 4).map(track => 
                 <TrackItem 
-                  key={track.id} 
-                  name={track.name} 
-                  artists={track.artists} 
-                  albumName={track.albumName} 
-                  albumImage={track.albumImage} 
-                  duration={track.duration} 
+                key={track.id} 
+                id={track.id} 
+                name={track.name} 
+                artists={track.artists} 
+                albumName={track.albumName} 
+                albumImage={track.albumImage} 
+                duration={track.duration}
+                popularity={track.popularity || 0} 
+                showPosition={false}
                 />
               )}
               <Link 

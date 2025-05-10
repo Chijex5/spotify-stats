@@ -163,11 +163,15 @@ const SongOfTheDayModal: React.FC<SongOfTheDayModalProps> = ({ isOpen, onClose }
               <h4 className="font-medium text-gray-800">Why this song matches you</h4>
             </div>
             <div className="flex flex-wrap gap-2">
-              {songOfTheDay.factors?.map((factor, index) => (
-                <span key={index} className="px-2 py-1 bg-white rounded-full text-xs font-medium text-pink-600 border border-pink-100">
-                  {factor}
-                </span>
-              ))}
+            {Array.from(new Set(songOfTheDay.factors || [])).map((factor, index) => (
+              <span
+                key={index}
+                className="px-2 py-1 bg-white rounded-full text-xs font-medium text-pink-600 border border-pink-100"
+              >
+                {factor}
+              </span>
+            ))}
+
               {!songOfTheDay.factors?.length && (
                 <span className="px-2 py-1 bg-white rounded-full text-xs font-medium text-pink-600 border border-pink-100">
                   Your top play

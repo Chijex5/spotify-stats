@@ -206,7 +206,7 @@ const Trends: React.FC = () => {
           topTracksData.medium_term.some(medTrack => medTrack.id === longTrack.id) &&
           topTracksData.short_term.some(shortTrack => shortTrack.id === longTrack.id)
         )
-        .slice(0, 3)
+        .slice(0, 5)
         .map(track => ({
           ...track,
           type: 'consistent',
@@ -219,7 +219,7 @@ const Trends: React.FC = () => {
           shortTrack.rank <= 5 && 
           !topTracksData.long_term.some(longTrack => longTrack.id === shortTrack.id)
         )
-        .slice(0, 2)
+        .slice(0, 4)
         .map(track => ({
           ...track,
           type: 'obsession',
@@ -232,7 +232,7 @@ const Trends: React.FC = () => {
           topTracksData.long_term.some(longTrack => longTrack.id === shortTrack.id) &&
           !topTracksData.medium_term.some(medTrack => medTrack.id === shortTrack.id)
         )
-        .slice(0, 2)
+        .slice(0, 5)
         .map(track => ({
           ...track,
           type: 'returning',

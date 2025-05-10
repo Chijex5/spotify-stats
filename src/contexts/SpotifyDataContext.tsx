@@ -63,7 +63,6 @@ export const SpotifyDataProvider: React.FC<{
   const [loading, setLoading] = useState<boolean>(false);
   const [isSongOfTheDayOpened, setIsSongOfTheDayOpened] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
   // Function to fetch track preview on demand (can be useful for lazy loading)
   const getTrackPreview = async (trackId: string): Promise<string | null> => {
     if (!token) return null;
@@ -117,7 +116,7 @@ export const SpotifyDataProvider: React.FC<{
       }));
       
       setTopTracks(tracks);
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       setError(err.message);
     }
   };
@@ -135,10 +134,10 @@ export const SpotifyDataProvider: React.FC<{
       if (!response.ok) throw new Error('Failed to fetch recently played');
       
       const data = await response.json();
-      const tracks: Track[] = data.items.map((item: any) => ({
+      const tracks: Track[] = data.items.map((item: { track: { id: string; name: string; artists: { name: string }[]; album: { name: string; images: { url: string }[] }; duration_ms: number; popularity: number; preview_url: string | null; external_urls?: { spotify: string }; is_playable?: boolean }; played_at: string }) => ({
         id: item.track.id,
         name: item.track.name,
-        artists: item.track.artists.map((artist: any) => artist.name),
+        artists: item.track.artists.map((artist: { name: string }) => artist.name),
         albumName: item.track.album.name,
         albumImage: item.track.album.images[0]?.url || '',
         duration: item.track.duration_ms,
@@ -152,8 +151,8 @@ export const SpotifyDataProvider: React.FC<{
       setRecentlyPlayed(tracks);
       const sotd = calculateSongOfTheDay(tracks);
       setSongOfTheDay(sotd);
-    } catch (err: Error) {
-      setError(err.message);
+    } catch (err: Error | unknown) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     }
   };
 
@@ -166,7 +165,7 @@ export const SpotifyDataProvider: React.FC<{
     
     // Check local storage for the last generated song and its date
     const storedSotd = localStorage.getItem('songOfTheDay');
-    let storedDate = localStorage.getItem('songOfTheDayDate');
+    const storedDate = localStorage.getItem('songOfTheDayDate');
     const storedDateObj = storedDate ? new Date(storedDate) : null;
     
     // If we have a stored song and it's still from today, return it
@@ -302,7 +301,7 @@ if (!token) {
         fetchRecentlyPlayed(), 
         fetchPlaylists()
       ]);
-    } catch (err: Error) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
